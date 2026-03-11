@@ -1,0 +1,969 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>축구 포물선 자동 조준 시뮬레이션</title>
+  <style>
+    body {
+      margin: 0;
+      background: #1d1d1d;
+      color: white;
+      font-family: Arial, sans-serif;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      height: 100vh;
+      overflow: hidden;
+    }
+
+    .wrap {
+      width: min(98vw, 2200px);
+    }
+
+    .layout {
+      display: flex;
+      gap: 16px;
+      align-items: flex-start;
+    }
+
+    .top-stage {
+      position: relative;
+      flex: 0 0 auto;
+    }
+
+    .top-view {
+      display: block;
+      height: 88vh;
+      width: auto;
+      max-width: 58vw;
+      background: #1d6a35;
+      border: 8px solid #4b2e19;
+      border-radius: 14px;
+      box-shadow: 0 0 20px rgba(0,0,0,0.4);
+      cursor: crosshair;
+    }
+
+    .other-views {
+      width: min(34vw, 560px);
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+    }
+
+    .view-card {
+      background: #252525;
+      border-radius: 14px;
+      padding: 10px;
+      box-shadow: 0 0 20px rgba(0,0,0,0.28);
+    }
+
+    .view-title {
+      font-size: 15px;
+      font-weight: bold;
+      color: #ffd86b;
+      margin-bottom: 8px;
+    }
+
+    .sub-view {
+      display: block;
+      width: 100%;
+      height: auto;
+      background: #101820;
+      border: 4px solid #3b3b3b;
+      border-radius: 10px;
+      cursor: crosshair;
+    }
+
+    .panel {
+      position: absolute;
+      left: 16px;
+      top: 16px;
+      background: rgba(0, 0, 0, 0.78);
+      padding: 14px 16px;
+      border-radius: 12px;
+      line-height: 1.45;
+      font-size: 14px;
+      min-width: 300px;
+      max-width: 350px;
+      z-index: 5;
+    }
+
+    .panel.hidden {
+      display: none;
+    }
+
+    .panel b {
+      color: #ffd86b;
+    }
+
+    .section {
+      margin-top: 12px;
+      padding-top: 10px;
+      border-top: 1px solid rgba(255,255,255,0.15);
+    }
+
+    .score {
+      margin-top: 10px;
+      font-size: 16px;
+    }
+
+    label {
+      display: block;
+      margin-top: 8px;
+      font-size: 13px;
+    }
+
+    input[type="range"] {
+      width: 100%;
+      margin-top: 4px;
+    }
+
+    .value {
+      font-size: 12px;
+      color: #d8d8d8;
+      margin-top: 2px;
+    }
+
+    .btn-row {
+      display: flex;
+      gap: 8px;
+      margin-top: 12px;
+      flex-wrap: wrap;
+    }
+
+    button {
+      border: none;
+      border-radius: 8px;
+      padding: 9px 10px;
+      font-size: 14px;
+      cursor: pointer;
+      color: white;
+    }
+
+    #applyBtn {
+      flex: 1;
+      background: #2f86ff;
+    }
+
+    #applyBtn:hover {
+      background: #1e6fe0;
+    }
+
+    #resetBtn {
+      flex: 1;
+      background: #666;
+    }
+
+    #resetBtn:hover {
+      background: #555;
+    }
+
+    #togglePanelBtn {
+      background: #444;
+      white-space: nowrap;
+    }
+
+    #togglePanelBtn:hover {
+      background: #5a5a5a;
+    }
+
+    .mini-toggle {
+      position: absolute;
+      left: 16px;
+      top: 16px;
+      background: rgba(0, 0, 0, 0.78);
+      border-radius: 10px;
+      padding: 8px 10px;
+      display: none;
+      z-index: 6;
+    }
+
+    .mini-toggle.show {
+      display: block;
+    }
+
+    .mini-toggle button {
+      background: #444;
+    }
+
+    .mini-toggle button:hover {
+      background: #5a5a5a;
+    }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <div class="layout">
+      <div class="top-stage">
+        <canvas id="topCanvas" class="top-view" width="1800" height="3000"></canvas>
+
+        <div class="panel" id="controlPanel">
+          <div><b>조작 방법</b></div>
+          <div>1. 붉은 공이 멈춰 있으면 자동 조준 궤적이 계속 보입니다.</div>
+          <div>2. 아무 뷰에서나 한 번 클릭하면 포물선으로 발사됩니다.</div>
+          <div>3. 붉은 공은 중력을 받아 낙하합니다.</div>
+          <div style="margin-top:6px;">※ 땅에 먼저 닿거나 경기장 밖으로 나가면 원위치합니다.</div>
+          <div>※ <b>R</b> 키: 전체 리셋</div>
+
+          <div class="score" id="scoreText">HIT: 0 / SHOT: 0</div>
+
+          <div class="section">
+            <div><b>파라미터 조절</b></div>
+
+            <label for="whiteRadius">흰 공 크기</label>
+            <input type="range" id="whiteRadius" min="15" max="80" step="1" value="15" />
+            <div class="value" id="whiteRadiusVal">15</div>
+
+            <label for="whiteSpeed">흰 공 속도</label>
+            <input type="range" id="whiteSpeed" min="1" max="20" step="0.5" value="20" />
+            <div class="value" id="whiteSpeedVal">20</div>
+
+            <label for="redRadius">붉은 공 크기</label>
+            <input type="range" id="redRadius" min="15" max="80" step="1" value="15" />
+            <div class="value" id="redRadiusVal">15</div>
+
+            <label for="redSpeed">붉은 공 속도 기준</label>
+            <input type="range" id="redSpeed" min="5" max="40" step="0.5" value="40" />
+            <div class="value" id="redSpeedVal">40</div>
+          </div>
+
+          <div class="btn-row">
+            <button id="applyBtn">적용</button>
+            <button id="resetBtn">리셋</button>
+            <button id="togglePanelBtn">숨기기</button>
+          </div>
+        </div>
+
+        <div class="mini-toggle" id="miniToggle">
+          <button id="showPanelBtn">패널 보기</button>
+        </div>
+      </div>
+
+      <div class="other-views">
+        <div class="view-card">
+          <div class="view-title">앞에서 본 뷰 (x-z)</div>
+          <canvas id="frontCanvas" class="sub-view" width="900" height="420"></canvas>
+        </div>
+
+        <div class="view-card">
+          <div class="view-title">옆에서 본 뷰 (y-z)</div>
+          <canvas id="sideCanvas" class="sub-view" width="900" height="420"></canvas>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const topCanvas = document.getElementById("topCanvas");
+    const topCtx = topCanvas.getContext("2d");
+
+    const frontCanvas = document.getElementById("frontCanvas");
+    const frontCtx = frontCanvas.getContext("2d");
+
+    const sideCanvas = document.getElementById("sideCanvas");
+    const sideCtx = sideCanvas.getContext("2d");
+
+    const controlPanel = document.getElementById("controlPanel");
+    const miniToggle = document.getElementById("miniToggle");
+
+    const FIELD_W = topCanvas.width;
+    const FIELD_H = topCanvas.height;
+
+    // 픽셀/프레임 기준으로 스케일한 지구 중력 느낌
+    const GRAVITY = 0.35;
+
+    const STOP_EPS = 0.05;
+    const SEARCH_T_MIN = 15;
+    const SEARCH_T_MAX = 220;
+    const SEARCH_COARSE_STEP = 1.0;
+    const SEARCH_FINE_RANGE = 3.0;
+    const SEARCH_FINE_STEP = 0.05;
+
+    let hitCount = 0;
+    let shotCount = 0;
+    let hitCooldown = 0;
+    let lastLaunchSpeed = 0;
+
+    const redStart = { x: 220, y: 2500 };
+
+    const redBall = {
+      x: redStart.x,
+      y: redStart.y,
+      z: 15,
+      prevX: redStart.x,
+      prevY: redStart.y,
+      prevZ: 15,
+      vx: 0,
+      vy: 0,
+      vz: 0,
+      speed: 40,
+      radius: 15,
+      color: "red",
+      active: false
+    };
+
+    const whiteBall = {
+      x: 900,
+      y: 220,
+      z: 15,
+      prevX: 900,
+      prevY: 220,
+      prevZ: 15,
+      radius: 15,
+      color: "white",
+      speed: 20,
+      dir: 1,
+      flash: 0
+    };
+
+    function updateScoreText() {
+      document.getElementById("scoreText").textContent =
+        `HIT: ${hitCount} / SHOT: ${shotCount}`;
+    }
+
+    function isStopped(ball) {
+      return (
+        Math.abs(ball.vx) < STOP_EPS &&
+        Math.abs(ball.vy) < STOP_EPS &&
+        Math.abs(ball.vz) < STOP_EPS
+      );
+    }
+
+    function keepBallInsideXY(ball) {
+      if (ball.x - ball.radius < 0) ball.x = ball.radius;
+      if (ball.x + ball.radius > FIELD_W) ball.x = FIELD_W - ball.radius;
+      if (ball.y - ball.radius < 0) ball.y = ball.radius;
+      if (ball.y + ball.radius > FIELD_H) ball.y = FIELD_H - ball.radius;
+    }
+
+    function resetRedBall() {
+      redBall.x = redStart.x;
+      redBall.y = redStart.y;
+      redBall.z = redBall.radius;
+
+      redBall.prevX = redStart.x;
+      redBall.prevY = redStart.y;
+      redBall.prevZ = redBall.radius;
+
+      redBall.vx = 0;
+      redBall.vy = 0;
+      redBall.vz = 0;
+      redBall.active = false;
+
+      keepBallInsideXY(redBall);
+    }
+
+    function fullReset() {
+      hitCount = 0;
+      shotCount = 0;
+      hitCooldown = 0;
+      lastLaunchSpeed = 0;
+
+      applyParameters(false);
+
+      resetRedBall();
+
+      whiteBall.x = 900;
+      whiteBall.y = 220;
+      whiteBall.z = whiteBall.radius;
+      whiteBall.prevX = 900;
+      whiteBall.prevY = 220;
+      whiteBall.prevZ = whiteBall.radius;
+      whiteBall.dir = 1;
+      whiteBall.flash = 0;
+
+      keepBallInsideXY(whiteBall);
+      updateScoreText();
+    }
+
+    function updateWhiteBall() {
+      whiteBall.prevX = whiteBall.x;
+      whiteBall.prevY = whiteBall.y;
+      whiteBall.prevZ = whiteBall.z;
+
+      whiteBall.x += whiteBall.speed * whiteBall.dir;
+      whiteBall.z = whiteBall.radius;
+
+      if (whiteBall.x - whiteBall.radius < 0) {
+        whiteBall.x = whiteBall.radius;
+        whiteBall.dir = 1;
+      }
+
+      if (whiteBall.x + whiteBall.radius > FIELD_W) {
+        whiteBall.x = FIELD_W - whiteBall.radius;
+        whiteBall.dir = -1;
+      }
+
+      if (whiteBall.flash > 0) whiteBall.flash--;
+    }
+
+    function updateRedBall() {
+      redBall.prevX = redBall.x;
+      redBall.prevY = redBall.y;
+      redBall.prevZ = redBall.z;
+
+      if (!redBall.active) return;
+
+      redBall.x += redBall.vx;
+      redBall.y += redBall.vy;
+      redBall.z += redBall.vz;
+      redBall.vz -= GRAVITY;
+    }
+
+    function endShotIfNeeded() {
+      if (!redBall.active) return;
+
+      const outOfXY =
+        redBall.x < -redBall.radius ||
+        redBall.x > FIELD_W + redBall.radius ||
+        redBall.y < -redBall.radius ||
+        redBall.y > FIELD_H + redBall.radius;
+
+      const hitGround = redBall.z <= redBall.radius && redBall.vz < 0;
+
+      if (outOfXY || hitGround) {
+        resetRedBall();
+      }
+    }
+
+    function simulateWhiteFuture(t) {
+      const L = whiteBall.radius;
+      const U = FIELD_W - whiteBall.radius;
+      const span = U - L;
+      const period = 2 * span;
+
+      let unfolded = (whiteBall.x - L) + whiteBall.dir * whiteBall.speed * t;
+      let m = ((unfolded % period) + period) % period;
+
+      let x;
+      if (m <= span) {
+        x = L + m;
+      } else {
+        x = U - (m - span);
+      }
+
+      return {
+        x,
+        y: whiteBall.y,
+        z: whiteBall.radius
+      };
+    }
+
+    // 붉은 공 속도 슬라이더를 기준값으로 삼아 가장 자연스러운 탄도를 찾는다.
+    function computeLiveAim() {
+      const sx = redBall.x;
+      const sy = redBall.y;
+      const sz = redBall.z;
+
+      const preferredSpeed = redBall.speed;
+      let best = null;
+
+      for (let t = SEARCH_T_MIN; t <= SEARCH_T_MAX; t += SEARCH_COARSE_STEP) {
+        const target = simulateWhiteFuture(t);
+
+        const vx = (target.x - sx) / t;
+        const vy = (target.y - sy) / t;
+        const vz = (target.z - sz + 0.5 * GRAVITY * t * t) / t;
+
+        const launchSpeed = Math.hypot(vx, vy, vz);
+
+        const tPeak = Math.max(0, Math.min(t, vz / GRAVITY));
+        const peakZ = sz + vz * tPeak - 0.5 * GRAVITY * tPeak * tPeak;
+
+        const score =
+          Math.abs(launchSpeed - preferredSpeed) +
+          Math.max(0, peakZ - 900) * 0.02;
+
+        if (!best || score < best.score) {
+          best = {
+            t,
+            vx,
+            vy,
+            vz,
+            targetX: target.x,
+            targetY: target.y,
+            targetZ: target.z,
+            launchSpeed,
+            peakZ,
+            score
+          };
+        }
+      }
+
+      if (!best) return null;
+
+      const fineStart = Math.max(SEARCH_T_MIN, best.t - SEARCH_FINE_RANGE);
+      const fineEnd = Math.min(SEARCH_T_MAX, best.t + SEARCH_FINE_RANGE);
+
+      for (let t = fineStart; t <= fineEnd; t += SEARCH_FINE_STEP) {
+        const target = simulateWhiteFuture(t);
+
+        const vx = (target.x - sx) / t;
+        const vy = (target.y - sy) / t;
+        const vz = (target.z - sz + 0.5 * GRAVITY * t * t) / t;
+
+        const launchSpeed = Math.hypot(vx, vy, vz);
+
+        const tPeak = Math.max(0, Math.min(t, vz / GRAVITY));
+        const peakZ = sz + vz * tPeak - 0.5 * GRAVITY * tPeak * tPeak;
+
+        const score =
+          Math.abs(launchSpeed - preferredSpeed) +
+          Math.max(0, peakZ - 900) * 0.02;
+
+        if (score < best.score) {
+          best = {
+            t,
+            vx,
+            vy,
+            vz,
+            targetX: target.x,
+            targetY: target.y,
+            targetZ: target.z,
+            launchSpeed,
+            peakZ,
+            score
+          };
+        }
+      }
+
+      const horizontalAngle = Math.atan2(best.vy, best.vx);
+      let angleDeg = horizontalAngle * 180 / Math.PI;
+      if (angleDeg < 0) angleDeg += 360;
+
+      const elevDeg = Math.atan2(best.vz, Math.hypot(best.vx, best.vy)) * 180 / Math.PI;
+
+      return {
+        ...best,
+        angleDeg,
+        elevDeg
+      };
+    }
+
+    function buildTrajectoryPoints(aim, count = 60) {
+      const points = [];
+
+      for (let i = 0; i <= count; i++) {
+        const t = aim.t * (i / count);
+
+        const x = redBall.x + aim.vx * t;
+        const y = redBall.y + aim.vy * t;
+        const z = redBall.z + aim.vz * t - 0.5 * GRAVITY * t * t;
+
+        points.push({ x, y, z: Math.max(z, 0) });
+      }
+
+      return points;
+    }
+
+    function fireAutoShot() {
+      if (!isStopped(redBall)) return;
+
+      const aim = computeLiveAim();
+      if (!aim) return;
+
+      redBall.vx = aim.vx;
+      redBall.vy = aim.vy;
+      redBall.vz = aim.vz;
+      redBall.active = true;
+
+      lastLaunchSpeed = aim.launchSpeed;
+      shotCount++;
+      updateScoreText();
+    }
+
+    function checkHitContinuous() {
+      if (!redBall.active) return;
+
+      if (hitCooldown > 0) {
+        hitCooldown--;
+        return;
+      }
+
+      const rx = redBall.prevX - whiteBall.prevX;
+      const ry = redBall.prevY - whiteBall.prevY;
+      const rz = redBall.prevZ - whiteBall.prevZ;
+
+      const rvx = (redBall.x - redBall.prevX) - (whiteBall.x - whiteBall.prevX);
+      const rvy = (redBall.y - redBall.prevY) - (whiteBall.y - whiteBall.prevY);
+      const rvz = (redBall.z - redBall.prevZ) - (whiteBall.z - whiteBall.prevZ);
+
+      const radiusSum = redBall.radius + whiteBall.radius;
+      const a = rvx * rvx + rvy * rvy + rvz * rvz;
+
+      let s = 0;
+      if (a > 1e-9) {
+        s = -((rx * rvx) + (ry * rvy) + (rz * rvz)) / a;
+        s = Math.max(0, Math.min(1, s));
+      }
+
+      const cx = rx + rvx * s;
+      const cy = ry + rvy * s;
+      const cz = rz + rvz * s;
+      const dist2 = cx * cx + cy * cy + cz * cz;
+
+      if (dist2 <= radiusSum * radiusSum) {
+        hitCount++;
+        whiteBall.flash = 10;
+        hitCooldown = 10;
+        updateScoreText();
+        resetRedBall();
+      }
+    }
+
+    function drawTopField() {
+      topCtx.strokeStyle = "rgba(255,255,255,0.18)";
+      topCtx.lineWidth = 6;
+      topCtx.strokeRect(20, 20, FIELD_W - 40, FIELD_H - 40);
+
+      topCtx.strokeStyle = "rgba(255,255,255,0.10)";
+      topCtx.lineWidth = 3;
+      topCtx.beginPath();
+      topCtx.moveTo(FIELD_W / 2, 30);
+      topCtx.lineTo(FIELD_W / 2, FIELD_H - 30);
+      topCtx.stroke();
+    }
+
+    function drawTopBall(ball) {
+      topCtx.beginPath();
+      topCtx.arc(ball.x, ball.y, ball.radius, 0, Math.PI * 2);
+      topCtx.fillStyle = ball.color;
+      topCtx.fill();
+      topCtx.closePath();
+
+      topCtx.beginPath();
+      topCtx.arc(
+        ball.x - ball.radius * 0.3,
+        ball.y - ball.radius * 0.3,
+        ball.radius * 0.25,
+        0,
+        Math.PI * 2
+      );
+      topCtx.fillStyle = "rgba(255,255,255,0.28)";
+      topCtx.fill();
+      topCtx.closePath();
+    }
+
+    function drawTopFlash() {
+      if (whiteBall.flash <= 0) return;
+
+      topCtx.beginPath();
+      topCtx.arc(whiteBall.x, whiteBall.y, whiteBall.radius + 16, 0, Math.PI * 2);
+      topCtx.strokeStyle = "rgba(255, 230, 80, 0.95)";
+      topCtx.lineWidth = 6;
+      topCtx.stroke();
+      topCtx.closePath();
+    }
+
+    function drawTopAimGuide() {
+      if (!isStopped(redBall)) return;
+
+      const aim = computeLiveAim();
+      if (!aim) return;
+
+      const pts = buildTrajectoryPoints(aim, 70);
+
+      topCtx.beginPath();
+      topCtx.moveTo(pts[0].x, pts[0].y);
+      for (const p of pts) {
+        topCtx.lineTo(p.x, p.y);
+      }
+      topCtx.strokeStyle = "rgba(255, 215, 80, 0.95)";
+      topCtx.lineWidth = 3;
+      topCtx.setLineDash([14, 10]);
+      topCtx.stroke();
+      topCtx.setLineDash([]);
+      topCtx.closePath();
+
+      topCtx.beginPath();
+      topCtx.arc(aim.targetX, aim.targetY, whiteBall.radius + redBall.radius + 6, 0, Math.PI * 2);
+      topCtx.strokeStyle = "rgba(255,255,255,0.65)";
+      topCtx.lineWidth = 2;
+      topCtx.stroke();
+      topCtx.closePath();
+
+      topCtx.beginPath();
+      topCtx.arc(aim.targetX, aim.targetY, 6, 0, Math.PI * 2);
+      topCtx.fillStyle = "rgba(255, 215, 80, 0.95)";
+      topCtx.fill();
+      topCtx.closePath();
+
+      topCtx.fillStyle = "rgba(255,255,255,0.96)";
+      topCtx.font = "24px Arial";
+      topCtx.fillText(`수평 각도: ${aim.angleDeg.toFixed(1)}°`, redBall.x + 40, redBall.y - 32);
+      topCtx.fillText(`발사 각도: ${aim.elevDeg.toFixed(1)}°`, redBall.x + 40, redBall.y + 2);
+      topCtx.fillText(`예상 초기속도: ${aim.launchSpeed.toFixed(2)}`, redBall.x + 40, redBall.y + 36);
+    }
+
+    function drawTopHUD() {
+      topCtx.fillStyle = "rgba(255,255,255,0.92)";
+      topCtx.font = "28px Arial";
+      topCtx.fillText("위에서 본 뷰 (x-y)", 40, FIELD_H - 80);
+      topCtx.fillText("클릭 한 번으로 포물선 자동 발사", 40, FIELD_H - 40);
+    }
+
+    function getZMax(aim) {
+      let maxZ = Math.max(redBall.z, whiteBall.z, 120);
+
+      if (aim) {
+        maxZ = Math.max(maxZ, aim.peakZ + 80);
+      }
+
+      if (redBall.active) {
+        maxZ = Math.max(maxZ, redBall.z + 80);
+      }
+
+      return maxZ;
+    }
+
+    function projectFront(x, z, radius, zMax) {
+      const padX = 40;
+      const padY = 30;
+      const usableW = frontCanvas.width - padX * 2;
+      const usableH = frontCanvas.height - padY * 2;
+
+      const px = padX + (x / FIELD_W) * usableW;
+      const py = frontCanvas.height - padY - (z / zMax) * usableH;
+
+      const rx = radius * usableW / FIELD_W;
+      const ry = radius * usableH / zMax;
+
+      return { x: px, y: py, rx, ry };
+    }
+
+    function projectSide(y, z, radius, zMax) {
+      const padX = 40;
+      const padY = 30;
+      const usableW = sideCanvas.width - padX * 2;
+      const usableH = sideCanvas.height - padY * 2;
+
+      const px = padX + (y / FIELD_H) * usableW;
+      const py = sideCanvas.height - padY - (z / zMax) * usableH;
+
+      const rx = radius * usableW / FIELD_H;
+      const ry = radius * usableH / zMax;
+
+      return { x: px, y: py, rx, ry };
+    }
+
+    function drawOrthographicField(ctx, canvas, xLabelLeft, xLabelRight, zMax) {
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+      const padX = 40;
+      const padY = 30;
+      const usableW = canvas.width - padX * 2;
+      const usableH = canvas.height - padY * 2;
+      const floorY = canvas.height - padY;
+
+      ctx.fillStyle = "#0f4624";
+      ctx.fillRect(padX, floorY - 16, usableW, 16);
+
+      ctx.strokeStyle = "rgba(255,255,255,0.28)";
+      ctx.lineWidth = 2;
+      ctx.strokeRect(padX, padY, usableW, usableH);
+
+      for (let i = 1; i <= 4; i++) {
+        const y = padY + (usableH * i) / 5;
+        ctx.beginPath();
+        ctx.moveTo(padX, y);
+        ctx.lineTo(padX + usableW, y);
+        ctx.strokeStyle = "rgba(255,255,255,0.08)";
+        ctx.lineWidth = 1;
+        ctx.stroke();
+      }
+
+      ctx.fillStyle = "rgba(255,255,255,0.85)";
+      ctx.font = "16px Arial";
+      ctx.fillText(xLabelLeft, padX, canvas.height - 6);
+      ctx.fillText(xLabelRight, padX + usableW - 30, canvas.height - 6);
+      ctx.fillText(`높이 z (max ${zMax.toFixed(0)})`, padX, 20);
+    }
+
+    function drawProjectedBall(ctx, proj, color) {
+      ctx.beginPath();
+      ctx.ellipse(proj.x, proj.y, Math.max(proj.rx, 2), Math.max(proj.ry, 2), 0, 0, Math.PI * 2);
+      ctx.fillStyle = color;
+      ctx.fill();
+      ctx.closePath();
+
+      ctx.beginPath();
+      ctx.ellipse(
+        proj.x - proj.rx * 0.25,
+        proj.y - proj.ry * 0.25,
+        Math.max(proj.rx * 0.25, 1),
+        Math.max(proj.ry * 0.25, 1),
+        0,
+        0,
+        Math.PI * 2
+      );
+      ctx.fillStyle = "rgba(255,255,255,0.28)";
+      ctx.fill();
+      ctx.closePath();
+    }
+
+    function drawFrontView() {
+      const aim = isStopped(redBall) ? computeLiveAim() : null;
+      const zMax = getZMax(aim);
+
+      drawOrthographicField(frontCtx, frontCanvas, "왼쪽", "오른쪽", zMax);
+
+      if (aim) {
+        const pts = buildTrajectoryPoints(aim, 70);
+        frontCtx.beginPath();
+        const p0 = projectFront(pts[0].x, pts[0].z, redBall.radius, zMax);
+        frontCtx.moveTo(p0.x, p0.y);
+        for (const p of pts) {
+          const pr = projectFront(p.x, p.z, redBall.radius, zMax);
+          frontCtx.lineTo(pr.x, pr.y);
+        }
+        frontCtx.strokeStyle = "rgba(255, 215, 80, 0.95)";
+        frontCtx.lineWidth = 2.5;
+        frontCtx.setLineDash([10, 8]);
+        frontCtx.stroke();
+        frontCtx.setLineDash([]);
+      }
+
+      const whiteProj = projectFront(whiteBall.x, whiteBall.z, whiteBall.radius, zMax);
+      const redProj = projectFront(redBall.x, redBall.z, redBall.radius, zMax);
+
+      drawProjectedBall(frontCtx, whiteProj, whiteBall.color);
+      if (whiteBall.flash > 0) {
+        frontCtx.beginPath();
+        frontCtx.ellipse(whiteProj.x, whiteProj.y, whiteProj.rx + 10, whiteProj.ry + 10, 0, 0, Math.PI * 2);
+        frontCtx.strokeStyle = "rgba(255,230,80,0.95)";
+        frontCtx.lineWidth = 4;
+        frontCtx.stroke();
+      }
+      drawProjectedBall(frontCtx, redProj, redBall.color);
+    }
+
+    function drawSideView() {
+      const aim = isStopped(redBall) ? computeLiveAim() : null;
+      const zMax = getZMax(aim);
+
+      drawOrthographicField(sideCtx, sideCanvas, "앞쪽", "뒤쪽", zMax);
+
+      if (aim) {
+        const pts = buildTrajectoryPoints(aim, 70);
+        sideCtx.beginPath();
+        const p0 = projectSide(pts[0].y, pts[0].z, redBall.radius, zMax);
+        sideCtx.moveTo(p0.x, p0.y);
+        for (const p of pts) {
+          const pr = projectSide(p.y, p.z, redBall.radius, zMax);
+          sideCtx.lineTo(pr.x, pr.y);
+        }
+        sideCtx.strokeStyle = "rgba(255, 215, 80, 0.95)";
+        sideCtx.lineWidth = 2.5;
+        sideCtx.setLineDash([10, 8]);
+        sideCtx.stroke();
+        sideCtx.setLineDash([]);
+      }
+
+      const whiteProj = projectSide(whiteBall.y, whiteBall.z, whiteBall.radius, zMax);
+      const redProj = projectSide(redBall.y, redBall.z, redBall.radius, zMax);
+
+      drawProjectedBall(sideCtx, whiteProj, whiteBall.color);
+      if (whiteBall.flash > 0) {
+        sideCtx.beginPath();
+        sideCtx.ellipse(whiteProj.x, whiteProj.y, whiteProj.rx + 10, whiteProj.ry + 10, 0, 0, Math.PI * 2);
+        sideCtx.strokeStyle = "rgba(255,230,80,0.95)";
+        sideCtx.lineWidth = 4;
+        sideCtx.stroke();
+      }
+      drawProjectedBall(sideCtx, redProj, redBall.color);
+    }
+
+    function drawTopView() {
+      topCtx.clearRect(0, 0, FIELD_W, FIELD_H);
+      drawTopField();
+      drawTopBall(whiteBall);
+      drawTopFlash();
+      drawTopBall(redBall);
+      drawTopAimGuide();
+      drawTopHUD();
+    }
+
+    function bindSlider(sliderId, valueId) {
+      const slider = document.getElementById(sliderId);
+      const valueBox = document.getElementById(valueId);
+
+      slider.addEventListener("input", () => {
+        valueBox.textContent = slider.value;
+      });
+    }
+
+    function applyParameters(resetRed = true) {
+      whiteBall.radius = parseFloat(document.getElementById("whiteRadius").value);
+      whiteBall.speed = parseFloat(document.getElementById("whiteSpeed").value);
+      whiteBall.z = whiteBall.radius;
+      whiteBall.prevZ = whiteBall.radius;
+
+      redBall.radius = parseFloat(document.getElementById("redRadius").value);
+      redBall.speed = parseFloat(document.getElementById("redSpeed").value);
+
+      if (resetRed) {
+        resetRedBall();
+      } else {
+        redBall.z = redBall.radius;
+        redBall.prevZ = redBall.radius;
+        keepBallInsideXY(redBall);
+      }
+
+      keepBallInsideXY(whiteBall);
+    }
+
+    function hidePanel() {
+      controlPanel.classList.add("hidden");
+      miniToggle.classList.add("show");
+    }
+
+    function showPanel() {
+      controlPanel.classList.remove("hidden");
+      miniToggle.classList.remove("show");
+    }
+
+    function animate() {
+      updateWhiteBall();
+      updateRedBall();
+      checkHitContinuous();
+      endShotIfNeeded();
+
+      drawTopView();
+      drawFrontView();
+      drawSideView();
+
+      requestAnimationFrame(animate);
+    }
+
+    [topCanvas, frontCanvas, sideCanvas].forEach((cv) => {
+      cv.addEventListener("click", () => {
+        fireAutoShot();
+      });
+    });
+
+    document.getElementById("applyBtn").addEventListener("click", () => {
+      applyParameters(true);
+    });
+
+    document.getElementById("resetBtn").addEventListener("click", fullReset);
+    document.getElementById("togglePanelBtn").addEventListener("click", hidePanel);
+    document.getElementById("showPanelBtn").addEventListener("click", showPanel);
+
+    window.addEventListener("keydown", (e) => {
+      if (e.key === "r" || e.key === "R") {
+        fullReset();
+      }
+    });
+
+    bindSlider("whiteRadius", "whiteRadiusVal");
+    bindSlider("whiteSpeed", "whiteSpeedVal");
+    bindSlider("redRadius", "redRadiusVal");
+    bindSlider("redSpeed", "redSpeedVal");
+
+    updateScoreText();
+    applyParameters(false);
+    animate();
+  </script>
+</body>
+</html>
