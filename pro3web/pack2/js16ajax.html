@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Document</title>
+    <script>
+        window.onload = () => {
+            document.querySelector("#btnGet").onclick = getFunc;    // 여기에 괄호를 넣으면 안됨. 클릭하면 동작되야하고 주소만 넘겨줌.
+            document.querySelector("#btnPost").onclick = postFunc;
+        }
+
+        let xhr;
+
+        function getFunc(){
+            let irum = frm.name.value;
+            let nai = frm.age.value;
+            // alert(irum + " " + nai);
+
+            xhr = new XMLHttpRequest();     // 서버와 Ajax 통신용 클래스
+            let fname = "js16.py?irum=" + irum + "&nai=" + nai;
+            // 임시 방편용 js.py 작성 (얘는 처리 후 json을 반환한다고 가정)
+            xhr.open("GET", fname, true);   // true : 비동기, false : 동기
+            xhr.onreadystatechange = function(){
+                if(xhr.readyState === 4 && xhr.status === 200){     // 통신 상태 확인
+                    process1();             // 서버에서 받는 데이터 출력인가? 아직 아니다.
+                }
+            }
+            xhr.send(); // 이러면 클라이언트의 브라우저 역할은 끝남.        // open => onreadystatechange => send  
+                        // 파이썬 => 제이슨(텍스트 문서 response text, xml을 받을 수 있는데, 우린 xml을 안 쓴다.)
+        }   // html: css, js, ...           // HTTP Service는 파이썬 사용 불가. 클라이언트에서 요청해도 불가.
+
+        function process1(){
+            alert(xhr.responseText);
+        }
+
+        function postFunc(){
+            let irum = frm.name.value;
+            let nai = frm.age.value;
+
+            xhr = new XMLHttpRequest();
+            let fname = "js16.py";
+            xhr.open("POST", fname, true);
+            xhr.onreadystatechange = function(){
+                if(xhr.readyState === 4 && xhr.status === 200){
+                    process1();
+                }
+            }
+            xhr.setRequestHeader("Content-Type","application/x-www-form-urlencoded")
+            xhr.send("irum=" + irum + "&nai=" + nai);    // body 영역에 포함되어 전송 대기
+
+        }
+    </script>
+
+
+
+</head>
+<body>
+    <h2>Ajax 이해 : get, post</h2>
+    <form name="frm">
+        이름 : <input type="text" name="name" value="tom"><br>
+        나이 : <input type="text" name="age" value="33"><br>
+        <input type="button" value="get 방식" id="btnGet">
+        <input type="button" value="post 방식" id="btnPost">     
+    </form>   
+</body>
+</html>
