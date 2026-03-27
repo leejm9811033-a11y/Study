@@ -29,12 +29,13 @@ print(data3)
 data3 = data2.reindex([0,1,2,3,4,5], method='backfill')
 print(data3)
 
+print("-----------------문항 4----------------")
 print('\nDataFrame : bool 처리')
 df = DataFrame(np.arange(12).reshape(4, 3),
             index=['1월', '2월', '3월', '4월'],
             columns = ['강남', '강북', '서초'])
 print(df)
-
+print("-----------------문항 4----------------")
 print(df['강남'])
 print(df['강남'] > 3)
 print(df[df['강남'] > 3])

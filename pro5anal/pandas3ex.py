@@ -6,6 +6,8 @@ import numpy as np
 #      np.random.randn(9, 4)
 #   b) a에서 생성한 DataFrame의 칼럼 이름을 - No1, No2, No3, No4로 지정하시오
 #   c) 각 컬럼의 평균을 구하시오. mean() 함수와 axis 속성 사용
+
+print("문제 1")
 datas = np.random.randn(9,4)
 #a)
 df = DataFrame(datas)
@@ -14,10 +16,10 @@ print(df)
 df = DataFrame(datas, columns=['No1', 'No2', 'No3', 'No4'])
 print(df)
 #c)
-print(df.mean(axis=1))
+print(df.mean(axis=0)) # 열: axis=0, 행: axis=1
 
 # pandas 문제 2)
-
+print("\n문제 2")
 # a) DataFrame으로 위와 같은 자료를 만드시오. colume(열) name은 numbers, row(행) name은 a~d이고 값은 10~40.
 df2 = DataFrame([10,20,30,40], index=['a','b','c','d'], columns=('numbers',))
 print(df2)
@@ -39,6 +41,7 @@ df2['names'] = names
 print(df2)
 
 # pandas 문제 3)
+print("\n문제 3")
 # 1) 5 x 3 형태의 랜덤 정수형 DataFrame을 생성하시오. (범위: 1 이상 20 이하, 난수)
 data3 = np.random.randint(1,21, size=(5,3))
 df3 = DataFrame(data3)
@@ -63,6 +66,7 @@ df3.loc['r6'] = ['15', '10', '2', '25']
 print(df3)
 
 # pandas 문제 4)
+print("\n문제 4")
 # 다음과 같은 재고 정보를 가지고 있는 딕셔너리 data가 있다고 하자.
 # data = {
 #     'product': ['Mouse', 'Keyboard', 'Monitor', 'Laptop'],
@@ -70,6 +74,7 @@ print(df3)
 #     'stock':   [  10,         5,          2,          3 ]
 # }
 # 1) 위 딕셔너리로부터 DataFrame을 생성하시오. 단, 행 인덱스는 p1, p2, p3, p4가 되도록 하시오.
+print("\n1)")
 data4 = {
     'product': ['Mouse', 'Keyboard', 'Monitor', 'Laptop'],
     'price':   [12000,     25000,      150000,    900000],
