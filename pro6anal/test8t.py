@@ -25,7 +25,7 @@ print(len(data))   # 20   30행이 넘으면 중심극한정리에 의해 정규
 print(stats.shapiro(data['국어']))  # pvalue=0.0129597
 # alpha 0.05 > pvalue=0.0129597    정규성을 만족하지 않음
 
-# 정규성을 만족하지 못한 경우 대안 
+# 정규성을 만족하지 못한 경우 대안
 # Wilcoxon : 비모수 검정 방법으로 정규성이 없을 때 적절한 선택이 될 수 있다.
 wilcox_result = wilcoxon(data['국어'] - 80)
 print("wilcox_result : ", wilcox_result)

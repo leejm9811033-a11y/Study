@@ -33,8 +33,7 @@ print('마력수 110에 대한 연비 예측 값 : ', \
 
 print('\n다중선형회귀 ---')
 result2 = smf.ols(formula='mpg ~ hp + wt', data=mtcars).fit()
-print(result2.summary())
-# 37.2273  -0.0318  -3.8778 
+print(result2.summary())               # 37.2273  -0.0318  -3.8778 
 print('마력수 110 + 무게 5에 대한 연비 예측값 : ', \
                     (-0.0318 * 110) + (-3.8778 * 5) + 37.2273)  # 14.3403
 print('마력수 110 + 무게 5에 대한 연비 예측값 : ', \
